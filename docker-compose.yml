@@ -1,0 +1,79 @@
+version: '3.8'
+
+services:
+  # Selenium Hub
+  selenium-hub:
+    image: selenium/hub:4.15.0
+    container_name: selenium-hub
+    ports:
+      - "4444:4444"
+    environment:
+      - GRID_MAX_SESSION=16
+      - GRID_BROWSER_TIMEOUT=300
+      - GRID_TIMEOUT=300
+    networks:
+      - selenium-grid
+
+  # Microsoft Edge Node
+  selenium-edge:
+    image: selenium/node-edge:4.15.0
+    container_name: selenium-edge
+    depends_on:
+      - selenium-hub
+    environment:
+      - HUB_HOST=selenium-hub
+      - HUB_PORT=4444
+      - NODE_MAX_INSTANCES=4
+      - NODE_MAX_SESSION=4
+    volumes:
+      - /dev/shm:/dev/shm
+      - ./downloads:/home/seluser/downloads
+    networks:
+      - selenium-grid
+
+  # VNC Server (ブラウザの動作を視覚的に確認するため)
+  selenium-edge-vnc:
+    image: selenium/node-edge:4.15.0
+    container_name: selenium-edge-vnc
+    depends_on:
+      - selenium-hub
+    ports:
+      - "7900:7900"  # VNC Web UI
+    environment:
+      - HUB_HOST=selenium-hub
+      - HUB_PORT=4444
+      - NODE_MAX_INSTANCES=2
+      - NODE_MAX_SESSION=2
+      - SE_ENABLE_VNC=true
+      - SE_VNC_PASSWORD=secret
+    volumes:
+      - /dev/shm:/dev/shm
+      - ./downloads:/home/seluser/downloads
+    networks:
+      - selenium-grid
+
+  # Python アプリケーション実行環境
+  selenium-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: selenium-app
+    depends_on:
+      - selenium-hub
+      - selenium-edge
+    volumes:
+      - .:/app
+      - ./downloads:/home/user/downloads
+    working_dir: /app
+    environment:
+      - SELENIUM_HUB_URL=http://selenium-hub:4444/wd/hub
+    networks:
+      - selenium-grid
+    command: tail -f /dev/null  # コンテナを起動状態に保つ
+
+networks:
+  selenium-grid:
+    driver: bridge
+
+volumes:
+  downloads:

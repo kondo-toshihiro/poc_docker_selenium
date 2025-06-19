@@ -17,9 +17,11 @@ def test_google_japan():
     edge_options.add_argument("--no-sandbox")
     edge_options.add_argument("--disable-dev-shm-usage")
     
-    # リモートWebDriverの設定（WSL2のSeleniumコンテナに接続）
+    # リモートWebDriverの設定（Docker Compose環境対応）
+    import os
+    selenium_hub_url = os.getenv('SELENIUM_HUB_URL', 'http://localhost:4444/wd/hub')
     driver = webdriver.Remote(
-        command_executor='http://localhost:4444/wd/hub',
+        command_executor=selenium_hub_url,
         options=edge_options
     )
     
